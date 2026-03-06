@@ -1,0 +1,17 @@
+{
+    "id": "sabnzbdMonitor",
+    "name": "SABnzbd Monitor",
+    "description": "Monitor SABnzbd download queue status, speed, and progress in your status bar.",
+    "version": "1.0.0",
+    "author": "Magnus Ullberg",
+    "component": "./SabnzbdWidget.qml",
+    "icon": "inbox",
+    "settings": "./SabnzbdSettings.qml",
+    "requires_dms": ">=1.4.0",
+    "license": "MIT",
+    "permissions": [
+        "network",
+        "settings_read",
+        "settings_write"
+    ]
+}
