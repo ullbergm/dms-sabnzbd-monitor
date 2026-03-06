@@ -4,7 +4,7 @@ import qs.Widgets
 import qs.Modules.Plugins
 
 PluginSettings {
-    pluginId: "sabnzbdMonitor"
+    pluginId: "sabnzbd-monitor"
 
     StringSetting {
         settingKey: "sabUrl"
