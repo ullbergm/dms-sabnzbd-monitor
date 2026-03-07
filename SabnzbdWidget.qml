@@ -159,12 +159,12 @@ PluginComponent {
         sizeLeft = q.sizeleft || ""
 
         var kbps = parseFloat(q.kbpersec) || 0
-        if (kbps > 0) {
-            if (kbps >= 1024) {
-                speed = (kbps / 1024).toFixed(1) + " MB/s"
-            } else {
-                speed = kbps.toFixed(0) + " KB/s"
-            }
+        if (kbps >= 1024 * 1024) {
+            speed = (kbps / 1024 / 1024).toFixed(1) + " GB/s"
+        } else if (kbps >= 1024) {
+            speed = (kbps / 1024).toFixed(1) + " MB/s"
+        } else if (kbps > 0) {
+            speed = kbps.toFixed(0) + " KB/s"
         } else {
             speed = ""
         }
@@ -477,7 +477,7 @@ PluginComponent {
 
                     Row {
                         width: parent.width
-                        visible: root.sizeLeft !== "" && root.sizeLeft !== "0 B"
+                        visible: root.sizeLeft !== "" && parseFloat(root.sizeLeft) > 0
                         StyledText {
                             width: parent.width * 0.5
                             text: "Remaining"
