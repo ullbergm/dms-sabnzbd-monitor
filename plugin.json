@@ -2,7 +2,7 @@
     "id": "sabnzbd-monitor",
     "name": "SABnzbd Monitor",
     "description": "Monitor SABnzbd download queue status, speed, and progress in your status bar.",
-    "version": "1.0.0",
+    "version": "1.2.0",
     "author": "Magnus Ullberg",
     "component": "./SabnzbdWidget.qml",
     "icon": "inbox",
