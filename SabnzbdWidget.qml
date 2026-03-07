@@ -137,12 +137,6 @@ PluginComponent {
     }
 
     function handleQueueResponse(obj) {
-        var q = obj.queue
-        if (!q) {
-            setApiFailure("invalid_payload")
-            return false
-        }
-
         if (obj.status === false || obj.status === "false") {
             var apiErr = (obj.error || "").toLowerCase()
             if (apiErr.indexOf("api") !== -1 && apiErr.indexOf("key") !== -1) {
@@ -150,6 +144,12 @@ PluginComponent {
             } else {
                 setApiFailure("api_error")
             }
+            return false
+        }
+
+        var q = obj.queue
+        if (!q) {
+            setApiFailure("invalid_payload")
             return false
         }
 
@@ -511,6 +511,7 @@ PluginComponent {
 
                     Row {
                         width: parent.width
+                        visible: root.queueSlots > 0
                         StyledText {
                             width: parent.width * 0.5
                             text: "Queue items"
