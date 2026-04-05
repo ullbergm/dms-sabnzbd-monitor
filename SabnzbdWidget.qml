@@ -18,6 +18,8 @@ PluginComponent {
     property string currentJobName: ""
     property string currentJobProgress: ""
 
+    property real currentJobPercent: 0    // 0-100, parsed from API response
+
     property bool apiError: false
     property string errorMessage: ""
     property bool actionBusy: false
@@ -175,9 +177,11 @@ PluginComponent {
             currentJobName = first.filename || first.nzo_id || ""
             var p = first.percentage || ""
             currentJobProgress = p !== "" ? (p.toString().indexOf("%") === -1 ? p + "%" : p) : ""
+            currentJobPercent = parseFloat(first.percentage) || 0
         } else {
             currentJobName = ""
             currentJobProgress = ""
+            currentJobPercent = 0
         }
 
         var s = (q.status || "").toLowerCase()
@@ -248,6 +252,12 @@ PluginComponent {
         if (mode === "icon" || mode === "text" || mode === "full")
             return mode
         return "full"
+    }
+
+    function retryNow() {
+        consecutiveFailures = 0
+        currentInterval = baseInterval
+        fetchQueue()
     }
 
     function setApiSuccess() {
@@ -333,6 +343,26 @@ PluginComponent {
     }
 
     // ---------------------------------------------------------------
+    // Popout detail model — drives the label/value rows via Repeater
+    // ---------------------------------------------------------------
+    function buildDetailModel() {
+        var items = []
+        if (currentJobName !== "")
+            items.push({ label: "Current job", value: currentJobName, elide: true })
+        if (currentJobProgress !== "")
+            items.push({ label: "Job progress", value: currentJobProgress, elide: false })
+        if (speed !== "")
+            items.push({ label: "Speed", value: speed, elide: false })
+        if (sizeLeft !== "" && parseFloat(sizeLeft) > 0)
+            items.push({ label: "Remaining", value: sizeLeft, elide: false })
+        if (timeLeft !== "" && timeLeft !== "0:00:00")
+            items.push({ label: "Time left", value: timeLeft, elide: false })
+        if (queueSlots > 0)
+            items.push({ label: "Queue items", value: queueSlots.toString(), elide: false })
+        return items
+    }
+
+    // ---------------------------------------------------------------
     // Popout panel
     // ---------------------------------------------------------------
     popoutContent: Component {
@@ -344,6 +374,7 @@ PluginComponent {
                 width: parent.width
                 spacing: Theme.spacingL
 
+                // --- Status header ---
                 Row {
                     width: parent.width
                     spacing: Theme.spacingM
@@ -364,10 +395,43 @@ PluginComponent {
                     }
                 }
 
+                // --- Progress bar ---
+                Column {
+                    width: parent.width
+                    spacing: Theme.spacingXS
+                    visible: !root.apiError && root.sabStatus !== "offline" && root.currentJobPercent > 0
+
+                    Rectangle {
+                        width: parent.width
+                        height: 6
+                        radius: 3
+                        color: Theme.surfaceVariant
+
+                        Rectangle {
+                            width: parent.width * Math.min(root.currentJobPercent, 100) / 100
+                            height: parent.height
+                            radius: parent.radius
+                            color: root.statusColor()
+
+                            Behavior on width {
+                                NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+                            }
+                        }
+                    }
+
+                    StyledText {
+                        text: root.currentJobProgress
+                        font.pixelSize: Theme.fontSizeSmall
+                        color: Theme.surfaceVariantText
+                        visible: root.currentJobProgress !== ""
+                    }
+                }
+
+                // --- Action buttons ---
                 Row {
                     width: parent.width
                     spacing: Theme.spacingS
-                    visible: root.sabApiKey.trim() !== "" && root.validSabUrl
+                    visible: root.sabApiKey.trim() !== "" && root.validSabUrl && !root.apiError
 
                     Repeater {
                         model: [
@@ -408,6 +472,34 @@ PluginComponent {
                     }
                 }
 
+                // --- Retry Now button (error state) ---
+                Row {
+                    width: parent.width
+                    spacing: Theme.spacingS
+                    visible: root.apiError && root.sabApiKey.trim() !== "" && root.validSabUrl
+
+                    Rectangle {
+                        width: retryLabel.implicitWidth + Theme.spacingM * 2
+                        height: retryLabel.implicitHeight + Theme.spacingS * 2
+                        radius: Theme.cornerRadius
+                        color: Theme.surfaceVariant
+
+                        StyledText {
+                            id: retryLabel
+                            anchors.centerIn: parent
+                            text: "Retry Now"
+                            color: Theme.surfaceText
+                            font.pixelSize: Theme.fontSizeSmall
+                            font.bold: true
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: root.retryNow()
+                        }
+                    }
+                }
+
                 StyledText {
                     visible: root.actionMessage !== ""
                     width: parent.width
@@ -417,116 +509,38 @@ PluginComponent {
                     font.pixelSize: Theme.fontSizeSmall
                 }
 
+                // --- Detail rows (Repeater-driven) ---
                 Column {
                     width: parent.width
                     spacing: Theme.spacingS
                     visible: !root.apiError && root.sabStatus !== "offline"
 
-                    Row {
-                        width: parent.width
-                        visible: root.currentJobName !== ""
-                        StyledText {
-                            width: parent.width * 0.5
-                            text: "Current job"
-                            color: Theme.surfaceVariantText
-                            font.pixelSize: Theme.fontSizeMedium
-                        }
-                        StyledText {
-                            width: parent.width * 0.5
-                            text: root.currentJobName
-                            elide: Text.ElideRight
-                            color: Theme.surfaceText
-                            font.pixelSize: Theme.fontSizeMedium
-                            font.bold: true
-                        }
-                    }
+                    Repeater {
+                        model: root.buildDetailModel()
 
-                    Row {
-                        width: parent.width
-                        visible: root.currentJobProgress !== ""
-                        StyledText {
-                            width: parent.width * 0.5
-                            text: "Job progress"
-                            color: Theme.surfaceVariantText
-                            font.pixelSize: Theme.fontSizeMedium
-                        }
-                        StyledText {
-                            text: root.currentJobProgress
-                            color: Theme.surfaceText
-                            font.pixelSize: Theme.fontSizeMedium
-                            font.bold: true
-                        }
-                    }
+                        delegate: Row {
+                            required property var modelData
+                            width: parent.width
 
-                    Row {
-                        width: parent.width
-                        visible: root.speed !== ""
-                        StyledText {
-                            width: parent.width * 0.5
-                            text: "Speed"
-                            color: Theme.surfaceVariantText
-                            font.pixelSize: Theme.fontSizeMedium
-                        }
-                        StyledText {
-                            text: root.speed
-                            color: Theme.surfaceText
-                            font.pixelSize: Theme.fontSizeMedium
-                            font.bold: true
-                        }
-                    }
-
-                    Row {
-                        width: parent.width
-                        visible: root.sizeLeft !== "" && parseFloat(root.sizeLeft) > 0
-                        StyledText {
-                            width: parent.width * 0.5
-                            text: "Remaining"
-                            color: Theme.surfaceVariantText
-                            font.pixelSize: Theme.fontSizeMedium
-                        }
-                        StyledText {
-                            text: root.sizeLeft
-                            color: Theme.surfaceText
-                            font.pixelSize: Theme.fontSizeMedium
-                            font.bold: true
-                        }
-                    }
-
-                    Row {
-                        width: parent.width
-                        visible: root.timeLeft !== "" && root.timeLeft !== "0:00:00"
-                        StyledText {
-                            width: parent.width * 0.5
-                            text: "Time left"
-                            color: Theme.surfaceVariantText
-                            font.pixelSize: Theme.fontSizeMedium
-                        }
-                        StyledText {
-                            text: root.timeLeft
-                            color: Theme.surfaceText
-                            font.pixelSize: Theme.fontSizeMedium
-                            font.bold: true
-                        }
-                    }
-
-                    Row {
-                        width: parent.width
-                        visible: root.queueSlots > 0
-                        StyledText {
-                            width: parent.width * 0.5
-                            text: "Queue items"
-                            color: Theme.surfaceVariantText
-                            font.pixelSize: Theme.fontSizeMedium
-                        }
-                        StyledText {
-                            text: root.queueSlots.toString()
-                            color: Theme.surfaceText
-                            font.pixelSize: Theme.fontSizeMedium
-                            font.bold: true
+                            StyledText {
+                                width: parent.width * 0.5
+                                text: modelData.label
+                                color: Theme.surfaceVariantText
+                                font.pixelSize: Theme.fontSizeMedium
+                            }
+                            StyledText {
+                                width: parent.width * 0.5
+                                text: modelData.value
+                                elide: modelData.elide ? Text.ElideRight : Text.ElideNone
+                                color: Theme.surfaceText
+                                font.pixelSize: Theme.fontSizeMedium
+                                font.bold: true
+                            }
                         }
                     }
                 }
 
+                // --- Configuration prompts ---
                 StyledText {
                     visible: root.sabApiKey.trim() === ""
                     width: parent.width
