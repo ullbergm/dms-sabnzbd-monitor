@@ -220,6 +220,19 @@ PluginComponent {
         )
     }
 
+    function buildActionModel() {
+        var items = []
+
+        if (sabStatus === "paused") {
+            items.push({ label: "Resume", action: "resume", usesBusy: true })
+        } else {
+            items.push({ label: "Pause", action: "pause", usesBusy: true })
+        }
+
+        items.push({ label: "Refresh", action: "refresh", usesBusy: false })
+        return items
+    }
+
     // ---------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------
@@ -382,6 +395,10 @@ PluginComponent {
         PopoutComponent {
             headerText: "SABnzbd"
             showCloseButton: true
+            onVisibleChanged: {
+                if (visible)
+                    root.fetchQueue()
+            }
 
             Column {
                 width: parent.width
@@ -474,11 +491,7 @@ PluginComponent {
                     visible: root.sabApiKey.trim() !== "" && root.validSabUrl && !root.apiError
 
                     Repeater {
-                        model: [
-                            { label: "Pause",   action: "pause",   usesBusy: true  },
-                            { label: "Resume",  action: "resume",  usesBusy: true  },
-                            { label: "Refresh", action: "refresh", usesBusy: false }
-                        ]
+                        model: root.buildActionModel()
 
                         delegate: Rectangle {
                             required property var modelData
