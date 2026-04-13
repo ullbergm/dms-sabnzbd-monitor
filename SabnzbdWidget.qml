@@ -318,6 +318,19 @@ PluginComponent {
         return "Offline"
     }
 
+    function openSabWebpage() {
+        if (!validSabUrl) {
+            actionMessage = "Set a valid SABnzbd URL"
+            actionMessageTimer.restart()
+            return
+        }
+
+        if (!Qt.openUrlExternally(normalizedSabUrl)) {
+            actionMessage = "Couldn't open SABnzbd webpage"
+            actionMessageTimer.restart()
+        }
+    }
+
     // ---------------------------------------------------------------
     // Status bar pill
     // ---------------------------------------------------------------
@@ -424,6 +437,33 @@ PluginComponent {
                         font.pixelSize: Theme.fontSizeSmall
                         color: Theme.surfaceVariantText
                         visible: root.currentJobProgress !== ""
+                    }
+                }
+
+                Row {
+                    width: parent.width
+                    spacing: Theme.spacingS
+                    visible: root.validSabUrl
+
+                    Rectangle {
+                        width: openWebLabel.implicitWidth + Theme.spacingM * 2
+                        height: openWebLabel.implicitHeight + Theme.spacingS * 2
+                        radius: Theme.cornerRadius
+                        color: Theme.surfaceVariant
+
+                        StyledText {
+                            id: openWebLabel
+                            anchors.centerIn: parent
+                            text: "Open Web UI"
+                            color: Theme.surfaceText
+                            font.pixelSize: Theme.fontSizeSmall
+                            font.bold: true
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: root.openSabWebpage()
+                        }
                     }
                 }
 
